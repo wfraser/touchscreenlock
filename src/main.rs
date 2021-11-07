@@ -51,7 +51,8 @@ fn main() {
         }
     };
 
-    let window_name = PWSTR(utf16_null!("TouchLock").as_mut_ptr());
+    let mut window_name = utf16_null!("TouchLock");
+    let window_name_ptr = PWSTR(window_name.as_mut_ptr());
 
     // ID 1 is the file icon in the EXE.
     let icon = unsafe { LoadIconW(hInstance, MAKEINTRESOURCEW(1)) };
@@ -61,7 +62,7 @@ fn main() {
         style: CS_HREDRAW | CS_VREDRAW,
         lpfnWndProc: Some(wndproc),
         hInstance,
-        lpszClassName: window_name,
+        lpszClassName: window_name_ptr,
         hCursor: unsafe { LoadCursorW(None, &IDC_CROSS) },
         hIcon: icon,
         ..Default::default()
@@ -71,8 +72,8 @@ fn main() {
 
     let hWnd = unsafe { CreateWindowExW(
         Default::default(),
-        window_name,
-        window_name,
+        window_name_ptr,
+        window_name_ptr,
         WS_POPUP | WS_VISIBLE, // WS_OVERLAPPEDWINDOW is a "normal" window; WS_POPUP has no chrome
         CW_USEDEFAULT,
         0,
