@@ -25,7 +25,7 @@ dependencies = [
 
 [[package]]
 name = "touchlock"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "anyhow",
  "utf16_lit",
