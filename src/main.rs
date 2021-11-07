@@ -6,7 +6,6 @@ use std::ptr::null_mut;
 use utf16_lit::utf16_null;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, PWSTR, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITORINFO, MONITOR_DEFAULTTONULL, MonitorFromWindow, UpdateWindow};
-use windows::Win32::System::LibraryLoader::{GetModuleHandleW};
 use windows::Win32::System::Threading::{GetStartupInfoW, STARTF_USESHOWWINDOW, STARTUPINFOW};
 use windows::Win32::UI::WindowsAndMessaging::{CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, HWND_TOP, IDC_CROSS, LoadCursorW, LoadIconW, MSG, PostQuitMessage, RegisterClassExW, SHOW_WINDOW_CMD, SW_SHOWNORMAL, SetWindowPos, ShowWindow, TranslateMessage, WM_DESTROY, WNDCLASSEXW, WS_POPUP, WS_VISIBLE};
 
@@ -34,22 +33,33 @@ extern "system" fn wndproc(hWnd: HWND, message: u32, wParam: WPARAM, lParam: LPA
     }
 }
 
+macro_rules! zerochk {
+    ($msg:expr, $e:expr) => {
+        if $e == 0 {
+            return Err(std::io::Error::last_os_error()).context($msg)
+        }
+    }
+}
+
 fn main() {
+    if let Err(e) = main_chk() {
+        let mut msg_u16 = format!("{:#}", e).encode_utf16().collect::<Vec<_>>();
+        msg_u16.push(0);
+        unsafe {
+            MessageBoxW(
+                None,
+                PWSTR(msg_u16.as_mut_ptr()),
+                PWSTR(utf16_null!("TouchLock Error").as_mut_ptr()),
+                MB_ICONERROR,
+            );
+        }
+        std::process::exit(1);
+    }
+}
+
+fn main_chk() -> Result<(), anyhow::Error> {
     // We need some parameters that would get passed to wWinMain if we had that as our entry point:
     let hInstance = unsafe { GetModuleHandleW(None) };
-    let nCmdShow = {
-        let mut startupInfo = STARTUPINFOW {
-            cb: size_of::<STARTUPINFOW>() as u32,
-            ..Default::default()
-        };
-        unsafe { GetStartupInfoW(&mut startupInfo) };
-        if (startupInfo.dwFlags & STARTF_USESHOWWINDOW).0 != 0 {
-            u32::from(startupInfo.wShowWindow)
-        } else {
-            // We weren't given any specific cmd; pick a sensible default.
-            SW_SHOWNORMAL.0
-        }
-    };
 
     let mut window_name = utf16_null!("TouchLock");
     let window_name_ptr = PWSTR(window_name.as_mut_ptr());
@@ -88,7 +98,7 @@ fn main() {
     let full = get_monitor_size(hWnd);
     unsafe { SetWindowPos(hWnd, HWND_TOP, full.left, full.top, full.right, full.bottom, Default::default()) };
 
-    unsafe { ShowWindow(hWnd, SHOW_WINDOW_CMD(nCmdShow)) };
+    unsafe { ShowWindow(hWnd, SW_SHOWDEFAULT) };
     unsafe { UpdateWindow(hWnd) };
 
     let mut msg: MSG = Default::default();
