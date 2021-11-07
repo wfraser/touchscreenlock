@@ -1,13 +1,14 @@
 #![windows_subsystem = "windows"]
 #![allow(non_snake_case)]
 
+use anyhow::Context as _;
 use std::mem::size_of;
 use std::ptr::null_mut;
 use utf16_lit::utf16_null;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, PWSTR, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITORINFO, MONITOR_DEFAULTTONULL, MonitorFromWindow, UpdateWindow};
-use windows::Win32::System::Threading::{GetStartupInfoW, STARTF_USESHOWWINDOW, STARTUPINFOW};
-use windows::Win32::UI::WindowsAndMessaging::{CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, HWND_TOP, IDC_CROSS, LoadCursorW, LoadIconW, MSG, PostQuitMessage, RegisterClassExW, SHOW_WINDOW_CMD, SW_SHOWNORMAL, SetWindowPos, ShowWindow, TranslateMessage, WM_DESTROY, WNDCLASSEXW, WS_POPUP, WS_VISIBLE};
+use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::UI::WindowsAndMessaging::{CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, HWND_TOP, IDC_CROSS, LoadCursorW, LoadIconW, MB_ICONERROR, MSG, MessageBoxW, PostQuitMessage, RegisterClassExW, SW_SHOWDEFAULT, SetWindowPos, ShowWindow, TranslateMessage, WM_DESTROY, WNDCLASSEXW, WS_POPUP, WS_VISIBLE};
 
 const fn MAKEINTRESOURCEW(id: u16) -> PWSTR {
     PWSTR(id as *mut u16)
@@ -78,7 +79,7 @@ fn main_chk() -> Result<(), anyhow::Error> {
         ..Default::default()
     };
 
-    unsafe { RegisterClassExW(&wcex) };
+    zerochk!("register window class", unsafe { RegisterClassExW(&wcex) });
 
     let hWnd = unsafe { CreateWindowExW(
         Default::default(),
@@ -94,12 +95,13 @@ fn main_chk() -> Result<(), anyhow::Error> {
         hInstance,
         null_mut(),
     ) };
+    zerochk!("create window", hWnd.0);
 
     let full = get_monitor_size(hWnd);
-    unsafe { SetWindowPos(hWnd, HWND_TOP, full.left, full.top, full.right, full.bottom, Default::default()) };
+    zerochk!("set window pos", unsafe { SetWindowPos(hWnd, HWND_TOP, full.left, full.top, full.right, full.bottom, Default::default()) }.0);
 
-    unsafe { ShowWindow(hWnd, SW_SHOWDEFAULT) };
-    unsafe { UpdateWindow(hWnd) };
+    zerochk!("show window", unsafe { ShowWindow(hWnd, SW_SHOWDEFAULT) }.0);
+    zerochk!("update window", unsafe { UpdateWindow(hWnd) }.0);
 
     let mut msg: MSG = Default::default();
     while unsafe { GetMessageW(&mut msg, None, 0, 0).as_bool() } {
@@ -108,4 +110,5 @@ fn main_chk() -> Result<(), anyhow::Error> {
             DispatchMessageW(&msg);
         }
     }
+    Ok(())
 }
