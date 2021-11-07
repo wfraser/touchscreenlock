@@ -5,10 +5,10 @@ use anyhow::Context as _;
 use std::mem::size_of;
 use std::ptr::null_mut;
 use utf16_lit::utf16_null;
-use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, PWSTR, RECT, WPARAM};
-use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITORINFO, MONITOR_DEFAULTTONULL, MonitorFromWindow, UpdateWindow};
-use windows::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows::Win32::UI::WindowsAndMessaging::{CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, HWND_TOP, IDC_CROSS, LoadCursorW, LoadIconW, MB_ICONERROR, MSG, MessageBoxW, PostQuitMessage, RegisterClassExW, SW_SHOWDEFAULT, SetWindowPos, ShowWindow, TranslateMessage, WM_DESTROY, WNDCLASSEXW, WS_POPUP, WS_VISIBLE};
+use windows::Win32::Foundation::*;
+use windows::Win32::Graphics::Gdi::*;
+use windows::Win32::System::LibraryLoader::*;
+use windows::Win32::UI::WindowsAndMessaging::*;
 
 const fn MAKEINTRESOURCEW(id: u16) -> PWSTR {
     PWSTR(id as *mut u16)
@@ -79,29 +79,42 @@ fn main_chk() -> Result<(), anyhow::Error> {
         ..Default::default()
     };
 
-    zerochk!("register window class", unsafe { RegisterClassExW(&wcex) });
+    zerochk!("register window class", unsafe {
+        RegisterClassExW(&wcex)
+    });
 
     let hWnd = unsafe { CreateWindowExW(
-        Default::default(),
-        window_name_ptr,
-        window_name_ptr,
-        WS_POPUP | WS_VISIBLE, // WS_OVERLAPPEDWINDOW is a "normal" window; WS_POPUP has no chrome
-        CW_USEDEFAULT,
-        0,
-        CW_USEDEFAULT,
-        0,
-        None,
-        None,
+        Default::default(), // window ex style
+        window_name_ptr,    // class name
+        window_name_ptr,    // window name
+        WS_POPUP | WS_VISIBLE,  // WS_OVERLAPPEDWINDOW is a "normal" window; WS_POPUP has no chrome
+        CW_USEDEFAULT,  // x
+        0,              // y
+        CW_USEDEFAULT,  // width
+        0,              // height
+        None, // parent
+        None, // menu
         hInstance,
-        null_mut(),
+        null_mut(), // lpparam
     ) };
     zerochk!("create window", hWnd.0);
 
     let full = get_monitor_size(hWnd);
-    zerochk!("set window pos", unsafe { SetWindowPos(hWnd, HWND_TOP, full.left, full.top, full.right, full.bottom, Default::default()) }.0);
+    zerochk!("set window pos", unsafe {
+        SetWindowPos(
+            hWnd,
+            HWND_TOP, // place on top of other windows (not always on top though)
+            full.left, full.top, full.right, full.bottom,
+            Default::default(), // flags
+        )
+    }.0);
 
-    zerochk!("show window", unsafe { ShowWindow(hWnd, SW_SHOWDEFAULT) }.0);
-    zerochk!("update window", unsafe { UpdateWindow(hWnd) }.0);
+    zerochk!("show window", unsafe {
+        ShowWindow(hWnd, SW_SHOWDEFAULT)
+    }.0);
+    zerochk!("update window", unsafe {
+        UpdateWindow(hWnd)
+    }.0);
 
     let mut msg: MSG = Default::default();
     while unsafe { GetMessageW(&mut msg, None, 0, 0).as_bool() } {
