@@ -29,7 +29,7 @@ extern "system" fn wndproc(hWnd: HWND, message: u32, wParam: WPARAM, lParam: LPA
         WM_DESTROY => {
             unsafe { PostQuitMessage(0) };
             LRESULT(0)
-        },
+        }
         _ => unsafe { DefWindowProcW(hWnd, message, wParam, lParam) },
     }
 }
@@ -37,9 +37,9 @@ extern "system" fn wndproc(hWnd: HWND, message: u32, wParam: WPARAM, lParam: LPA
 macro_rules! zerochk {
     ($msg:expr, $e:expr) => {
         if $e == 0 {
-            return Err(std::io::Error::last_os_error()).context($msg)
+            return Err(std::io::Error::last_os_error()).context($msg);
         }
-    }
+    };
 }
 
 fn main() {
@@ -74,47 +74,50 @@ fn main_chk() -> Result<(), anyhow::Error> {
         lpfnWndProc: Some(wndproc),
         hInstance,
         lpszClassName: window_name_ptr,
-        hCursor: unsafe { LoadCursorW(None, &IDC_CROSS) },
+        hCursor: unsafe { LoadCursorW(None, IDC_CROSS) },
         hIcon: icon,
         ..Default::default()
     };
 
-    zerochk!("register window class", unsafe {
-        RegisterClassExW(&wcex)
-    });
+    zerochk!("register window class", unsafe { RegisterClassExW(&wcex) });
 
-    let hWnd = unsafe { CreateWindowExW(
-        Default::default(), // window ex style
-        window_name_ptr,    // class name
-        window_name_ptr,    // window name
-        WS_POPUP | WS_VISIBLE,  // WS_OVERLAPPEDWINDOW is a "normal" window; WS_POPUP has no chrome
-        CW_USEDEFAULT,  // x
-        0,              // y
-        CW_USEDEFAULT,  // width
-        0,              // height
-        None, // parent
-        None, // menu
-        hInstance,
-        null_mut(), // lpparam
-    ) };
+    let hWnd = unsafe {
+        CreateWindowExW(
+            Default::default(),    // window ex style
+            window_name_ptr,       // class name
+            window_name_ptr,       // window name
+            WS_POPUP | WS_VISIBLE, // WS_OVERLAPPEDWINDOW is a "normal" window; WS_POPUP has no chrome
+            CW_USEDEFAULT,         // x
+            0,                     // y
+            CW_USEDEFAULT,         // width
+            0,                     // height
+            None,                  // parent
+            None,                  // menu
+            hInstance,
+            null_mut(), // lpparam
+        )
+    };
     zerochk!("create window", hWnd.0);
 
     let full = get_monitor_size(hWnd);
-    zerochk!("set window pos", unsafe {
-        SetWindowPos(
-            hWnd,
-            HWND_TOP, // place on top of other windows (not always on top though)
-            full.left, full.top, full.right, full.bottom,
-            Default::default(), // flags
-        )
-    }.0);
+    zerochk!(
+        "set window pos",
+        unsafe {
+            SetWindowPos(
+                hWnd,
+                HWND_TOP, // place on top of other windows (not always on top though)
+                full.left,
+                full.top,
+                full.right,
+                full.bottom,
+                Default::default(), // flags
+            )
+        }
+        .0
+    );
 
-    zerochk!("show window", unsafe {
-        ShowWindow(hWnd, SW_SHOWDEFAULT)
-    }.0);
-    zerochk!("update window", unsafe {
-        UpdateWindow(hWnd)
-    }.0);
+    zerochk!("show window", unsafe { ShowWindow(hWnd, SW_SHOWDEFAULT) }.0);
+    zerochk!("update window", unsafe { UpdateWindow(hWnd) }.0);
 
     let mut msg: MSG = Default::default();
     while unsafe { GetMessageW(&mut msg, None, 0, 0).as_bool() } {
